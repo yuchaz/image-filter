@@ -1,0 +1,5 @@
+*.sln
+*.vcxproj
+*.ui
+ImgFilter.pro.user
+ImgFilter.pro.user.*
