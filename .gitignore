@@ -3,3 +3,7 @@
 *.ui
 ImgFilter.pro.user
 ImgFilter.pro.user.*
+
+Makefile
+.qmake.stash
+output/**

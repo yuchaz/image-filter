@@ -17,3 +17,9 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h
 
 FORMS    += mainwindow.ui
+
+DESTDIR = output
+OBJECTS_DIR = output/.obj
+MOC_DIR = output/.moc
+RCC_DIR = output/.rcc
+UI_DIR = output/.ui
