@@ -209,7 +209,34 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
  * add: a boolean variable (taking values true or false)
 */
 {
-    // Add your code here
+    buffer = new double* [imageWidth*imageHeight];
+    for (int i = 0; i < imageWidth*imageHeight; i++)
+            buffer[i] = new double[3];
+
+
+    for(int r=0;r<imageHeight;r++)
+    {
+        for(int c=0;c<imageWidth;c++)
+        {
+            double rgb[3];
+            rgb[0] = rgb[1] = rgb[2] = 0.0;
+
+            // Convolve the kernel at each pixel
+            for(int rd=-kernelHeight;rd<=kernelHeight;rd++)
+                for(int cd=-kernelWidth;cd<=kernelWidth;cd++)
+                {
+                     double weight = kernel[(rd + radius)*size + cd + radius];
+
+                     rgb[0] += weight*buffer[r*imageWidth+c][0];
+                     rgb[1] += weight*buffer[r*imageWidth+c][1];
+                     rgb[2] += weight*buffer[r*imageWidth+c][2];
+                }
+
+            image[r*imageWidth+c][0] = (double) rgb[0];
+            image[r*imageWidth+c][1] = (double) rgb[1];
+            image[r*imageWidth+c][2] = (double) rgb[2];
+        }
+    }
 }
 
 /**************************************************
