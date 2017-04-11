@@ -215,12 +215,27 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
  * add: a boolean variable (taking values true or false)
 */
 {
-    double** buffer = new double* [imageWidth*imageHeight];
-    for (int i = 0; i < imageWidth*imageHeight; i++)
+    int bufferWidth = imageWidth+kernelWidth-1;
+    int bufferHeight = imageHeight+kernelHeight-1;
+    int imageWidthStart = (kernelWidth-1)/2;
+    int imageHeightStart = (kernelHeight-1)/2;
+    int imageWidthEnd = imageWidthStart+imageWidth;
+    int imageHeightEnd = imageHeightStart+imageHeight;
+    double** buffer = new double* [bufferWidth*bufferHeight];
+    for (int i=0; i<bufferWidth*bufferHeight; i++)
     {
         buffer[i] = new double[3];
-        for (int j = 0; j < 3; j++)
-            buffer[i][j] = image[i][j];
+        int image_x = i%imageWidth;
+        int image_y = i/imageWidth;
+
+        for (int j=0; j<3; j++)
+        {
+            if ((image_x < imageWidthStart || image_x >= imageWidthEnd) || (image_y < imageHeightStart || image_y >= imageHeightEnd)) {
+                buffer[i][j] = 0.0;
+            } else {
+                buffer[i][j] = image[(image_y-imageHeightStart)*imageWidth+(image_x-imageWidthStart)][j];
+            }
+        }
     }
 
     int kernel_width_size = 2*kernelWidth+1;
@@ -232,13 +247,13 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
             rgb[0] = rgb[1] = rgb[2] = 0.0;
 
             // Convolve the kernel at each pixel
-            for(int rd=0;rd<=kernelHeight;rd++)
-                for(int cd=0;cd<=kernelWidth;cd++)
+            int height_radius = (kernelHeight-1)/2;
+            int width_radius = (kernelWidth-1)/2;
+            for(int rd=-height_radius;rd<=height_radius;rd++)
+                for(int cd=-width_radius;cd<=width_radius;cd++)
                 {
-                     int pixel = (r + rd) * imageWidth + (c + cd);
-                     if (r+kernelHeight >= imageHeight || c+kernelWidth >= imageWidth)
-                        continue;
-                     double weight = kernel[rd*kernel_width_size + cd];
+                     int pixel = (r + rd + height_radius) * imageWidth + (c + cd + width_radius);
+                     double weight = kernel[(rd+height_radius)*kernel_width_size + (cd+width_radius)];
 
                      rgb[0] += weight*buffer[pixel][0];
                      rgb[1] += weight*buffer[pixel][1];
@@ -250,6 +265,7 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
             image[r*imageWidth+c][2] = restrictColorForDouble(rgb[2]);
         }
     }
+    delete[] kernel;
 }
 
 /**************************************************
@@ -271,8 +287,15 @@ void MainWindow::GaussianBlurImage(double** image, double sigma)
     double *kernel = new double [size*size];
 
     for(int x=0; x<size; x++)
-        for (int y=0; y<size; y++)
-            kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-radius)/sigma, 2.0 )+ pow( (y-radius)/sigma, 2.0 ) ) );
+        for (int y=0; y<size; y++){
+            // kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-radius)/sigma, 2.0 )+ pow( (y-radius)/sigma, 2.0 ) ) );
+            if (x == radius && y == radius){
+                kernel[x*size+y] == 1.0;
+            } else {
+                kernel[x*size+y] == 0.0;
+            }
+        }
+
 
     NormalizeKernel(kernel, size, size);
     MainWindow::Convolution(image, kernel, size, size, true);
