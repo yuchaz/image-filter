@@ -198,6 +198,17 @@ void MainWindow::ConvertDouble2QImage(QImage *image)
             image->setPixel(c, r, restrictColor(Image[r*imageWidth+c][0], Image[r*imageWidth+c][1], Image[r*imageWidth+c][2]));
 }
 
+void UnityKernel(double* kernel, int size)
+{
+    for(int x=0; x<size; x++)
+        for (int y=0; y<size; y++){
+            if(x==(size-1)/2 && y==(size-1)/2) {
+                kernel[x*size+y] = 1.0;
+            } else {
+                kernel[x*size+y] = 0.0;
+            }
+        }
+}
 
 /**************************************************
  TIME TO WRITE CODE
