@@ -280,7 +280,6 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
         }
     }
 
-    delete[] kernel;
     for (int i=0; i<3; i++)
         delete[] buffer[i];
     delete[] buffer;
@@ -312,6 +311,7 @@ void MainWindow::GaussianBlurImage(double** image, double sigma)
 
     NormalizeKernel(kernel, size, size);
     MainWindow::Convolution(image, kernel, size, size, false);
+    delete[] kernel;
 }
 
 /**************************************************
@@ -325,7 +325,18 @@ void MainWindow::SeparableGaussianBlurImage(double** image, double sigma)
  * sigma: standard deviation for the Gaussian kernel
 */
 {
-    // Add your code here
+    if (sigma == 0.0)
+        return;
+    int radius = (int)(ceil(3*sigma));
+    int size = 2*radius+1;
+    double *kernel = new double [size];
+    for (int x=0; x<size; x++) {
+        kernel[x] = ( 1 / sqrt( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * pow( (x-radius)/sigma, 2.0 ) );
+    }
+    NormalizeKernel(kernel, 1, size);
+    MainWindow::Convolution(image, kernel, 1, size, false);
+    MainWindow::Convolution(image, kernel, size, 1, false);
+    delete[] kernel;
 }
 
 /********** TASK 4 (a) **********/
