@@ -221,6 +221,8 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
     int imageHeightStart = (kernelHeight-1)/2;
     int imageWidthEnd = imageWidthStart+imageWidth;
     int imageHeightEnd = imageHeightStart+imageHeight;
+
+    // copy the image from the input doble** to buffer.
     double** buffer = new double* [bufferWidth*bufferHeight];
     for (int i=0; i<bufferWidth*bufferHeight; i++)
     {
@@ -238,7 +240,6 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
         }
     }
 
-    int kernel_width_size = 2*kernelWidth+1;
     for(int r=0;r<imageHeight;r++)
     {
         for(int c=0;c<imageWidth;c++)
@@ -247,13 +248,13 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
             rgb[0] = rgb[1] = rgb[2] = 0.0;
 
             // Convolve the kernel at each pixel
-            int height_radius = (kernelHeight-1)/2;
-            int width_radius = (kernelWidth-1)/2;
-            for(int rd=-height_radius;rd<=height_radius;rd++)
-                for(int cd=-width_radius;cd<=width_radius;cd++)
+            int heightRadius = (kernelHeight-1)/2;
+            int widthRadius = (kernelWidth-1)/2;
+            for(int rd=-heightRadius;rd<=heightRadius;rd++)
+                for(int cd=-widthRadius;cd<=widthRadius;cd++)
                 {
-                     int pixel = (r + rd + height_radius) * imageWidth + (c + cd + width_radius);
-                     double weight = kernel[(rd+height_radius)*kernel_width_size + (cd+width_radius)];
+                     int pixel = (r + rd + heightRadius) * imageWidth + (c + cd + widthRadius);
+                     double weight = kernel[(rd+heightRadius)*kernelWidth + (cd+widthRadius)];
 
                      rgb[0] += weight*buffer[pixel][0];
                      rgb[1] += weight*buffer[pixel][1];
@@ -292,7 +293,7 @@ void MainWindow::GaussianBlurImage(double** image, double sigma)
     for(int x=0; x<size; x++)
         for (int y=0; y<size; y++){
             // kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-radius)/sigma, 2.0 )+ pow( (y-radius)/sigma, 2.0 ) ) );
-            if (x == radius && y == radius){
+            if (x==radius && y==radius){
                 kernel[x*size+y] = 1.0;
             } else {
                 kernel[x*size+y] = 0.0;
