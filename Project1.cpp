@@ -266,6 +266,9 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
         }
     }
     delete[] kernel;
+    for (int i=0; i<3; i++)
+        delete[] buffer[i];
+    delete[] buffer;
 }
 
 /**************************************************
@@ -290,9 +293,9 @@ void MainWindow::GaussianBlurImage(double** image, double sigma)
         for (int y=0; y<size; y++){
             // kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-radius)/sigma, 2.0 )+ pow( (y-radius)/sigma, 2.0 ) ) );
             if (x == radius && y == radius){
-                kernel[x*size+y] == 1.0;
+                kernel[x*size+y] = 1.0;
             } else {
-                kernel[x*size+y] == 0.0;
+                kernel[x*size+y] = 0.0;
             }
         }
 
