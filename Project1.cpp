@@ -487,15 +487,40 @@ void MainWindow::SobelImage(double** image)
  * NOTE: image is grayscale here, i.e., all 3 channels have the same value which is the grayscale value
 */
 {
-    // Add your code here
-
     // Use the following 3 lines of code to set the image pixel values after computing magnitude and orientation
     // Here 'mag' is the magnitude and 'orien' is the orientation angle in radians to be computed using atan2 function
     // (sin(orien) + 1)/2 converts the sine value to the range [0,1]. Similarly for cosine.
 
-    // image[r*imageWidth+c][0] = mag*4.0*((sin(orien) + 1.0)/2.0);
-    // image[r*imageWidth+c][1] = mag*4.0*((cos(orien) + 1.0)/2.0);
-    // image[r*imageWidth+c][2] = mag*4.0 - image[r*imageWidth+c][0] - image[r*imageWidth+c][1];
+    double sobelKernelX[9] = {-1,0,1,-2,0,2,-1,0,1};
+    double sobelKernelY[9] = {1,2,1,0,0,0,-1,-2,-1};
+    double** Gx = new double* [imageWidth*imageHeight];
+    double** Gy = new double* [imageWidth*imageHeight];
+    for (int i=0; i!=imageWidth*imageHeight; i++)
+        for (int j=0; j!=3; j++) {
+            Gx[i] = new double[3];
+            Gy[i] = new double[3];
+            Gx[i][j] = image[i][j];
+            Gy[i][j] = image[i][j];
+        }
+    MainWindow::Convolution(Gx,sobelKernelX,3,3,false);
+    MainWindow::Convolution(Gy,sobelKernelY,3,3,false);
+    for (int c=0; c!=imageWidth; c++)
+        for (int r=0; r!=imageHeight; r++) {
+            double y_val = Gy[r*imageWidth+c][0];
+            double x_val = Gx[r*imageWidth+c][0];
+            double orien = atan2(y_val,x_val);
+            double mag = sqrt(pow(x_val,2)+pow(y_val,2));
+            image[r*imageWidth+c][0] = mag*4.0*((sin(orien) + 1.0)/2.0);
+            image[r*imageWidth+c][1] = mag*4.0*((cos(orien) + 1.0)/2.0);
+            image[r*imageWidth+c][2] = mag*4.0 - image[r*imageWidth+c][0] - image[r*imageWidth+c][1];
+        }
+    for (int i=0;i<imageWidth*imageHeight;i++) {
+        delete[] Gx[i];
+        delete[] Gy[i];
+    }
+    delete[] Gx;
+    delete[] Gy;
+
 }
 
 /**************************************************
