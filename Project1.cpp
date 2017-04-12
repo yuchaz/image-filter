@@ -450,7 +450,30 @@ void MainWindow::SharpenImage(double** image, double sigma, double alpha)
  * alpha: constant by which the second derivative image is to be multiplied to before subtracting it from the original image
 */
 {
-    // Add your code here
+    double **originalImage = new double* [imageWidth*imageHeight];
+    double **gaussianImage = new double* [imageWidth*imageHeight];
+    for (int i=0; i<imageWidth*imageHeight; i++) {
+        originalImage[i] = new double[3];
+        gaussianImage[i] = new double[3];
+        for(int j=0;j<3;j++){
+            originalImage[i][j] = image[i][j];
+        }
+    }
+    MainWindow::SecondDerivImage(image, sigma);
+    for (int i=0;i<imageWidth*imageHeight;i++)
+        for (int j=0;j!=3;j++)
+            gaussianImage[i][j] = image[i][j];
+    for (int i=0;i<imageWidth*imageHeight;i++)
+        for (int j=0;j<3;j++) {
+            double piexel_val = originalImage[i][j] - alpha*gaussianImage[i][j];
+            image[i][j] = restrictColorForDouble(piexel_val, true);
+        }
+    for (int i=0;i<imageWidth*imageHeight;i++) {
+        delete[] originalImage[i];
+        delete[] gaussianImage[i];
+    }
+    delete[] originalImage;
+    delete[] gaussianImage;
 }
 
 /**************************************************
