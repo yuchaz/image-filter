@@ -536,7 +536,21 @@ void MainWindow::BilinearInterpolation(double** image, double x, double y, doubl
  * rgb[3]: array where the computed RGB values are to be stored
 */
 {
-    // Add your code here
+    double x_2 = ceil(x);
+    double y_2 = ceil(y);
+    double x_1 = x_2-1;
+    double y_1 = y_2-1;
+    for (int i=0; i!=3; i++) {
+        double f_11 = image[(int) (y_1*imageWidth+x_1)][i];
+        double f_12 = image[(int) (y_2*imageWidth+x_1)][i];
+        double f_21 = image[(int) (y_1*imageWidth+x_2)][i];
+        double f_22 = image[(int) (y_2*imageWidth+x_2)][i];
+        rgb[i] = f_11 * (x_2-x) * (y_2-y) \
+               + f_21 * (x-x_1) * (y_2-y) \
+               + f_12 * (x_2-x) * (y-y_1) \
+               + f_22 * (x-x_1) * (y-y_1);
+    }
+
 }
 
 /*******************************************************************************
@@ -595,7 +609,38 @@ void MainWindow::FindPeaksImage(double** image, double thres)
  * thres: threshold value for magnitude
 */
 {
-    // Add your code here
+    double** buffer = new double* [imageWidth*imageHeight];
+    MainWindow::SobelImage(image);
+    for (int i=0; i!=imageWidth*imageHeight; i++)
+        for (int j=0; j!=3; j++)
+            buffer[i][j] = image[i][j];
+    for (int x=0; x!=imageWidth; x++) {
+        for (int y=0; y!=imageHeight; y++) {
+            double* rgb_1 = new double[3];
+            double* rgb_2 = new double[3];
+            double e1x = ((double) x) + buffer[y*imageWidth+x][1];
+            double e1y = ((double) x) + buffer[y*imageWidth+x][0];
+            double e2x = ((double) x) - buffer[y*imageWidth+x][1];
+            double e2y = ((double) x) - buffer[y*imageWidth+x][1];
+            MainWindow::BilinearInterpolation(buffer, e1x, e1y, rgb_1);
+            MainWindow::BilinearInterpolation(buffer, e2x, e2y, rgb_2);
+            if (buffer[y*imageWidth+x][2] >= thres && \
+                buffer[y*imageWidth+x][2] > rgb_1[2] && \
+                buffer[y*imageWidth+x][2] > rgb_2[2]) {
+                image[y*imageWidth+x][0] = 255.0;
+                image[y*imageWidth+x][1] = 255.0;
+                image[y*imageWidth+x][2] = 255.0;
+            } else {
+                image[y*imageWidth+x][0] = 0.0;
+                image[y*imageWidth+x][1] = 0.0;
+                image[y*imageWidth+x][2] = 0.0;
+            }
+        }
+    }
+
+    for(int i=0; i!=imageWidth*imageHeight; i++)
+        delete[] buffer[i];
+    delete[] buffer;
 }
 
 /**************************************************
