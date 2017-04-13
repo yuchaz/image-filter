@@ -216,6 +216,25 @@ void UnityKernel(double* kernel, int size)
         }
 }
 
+double* generateGaussianKernel(double sigma, bool if2d) {
+    int radius = (int)(ceil(3 * sigma));
+    int x_size = 2 * radius + 1;
+    int y_size = if2d==true ? x_size : 1;
+    double *kernel = new double [x_size*y_size];
+
+    for (int y=0; y!=y_size; y++)
+        for (int x=0; x!=x_size; x++) {
+            kernel[y*x_size+x] = if2d==true ? \
+                ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * \
+                    exp( -0.5 * (pow( (x-radius)/sigma, 2.0 ) + \
+                    pow( (y-radius)/sigma, 2.0 ) ) ) : \
+                ( 1 / sqrt( 2*M_PI*pow(sigma, 2.0) ) ) * \
+                    exp( -0.5 * pow( (x-radius)/sigma, 2.0 ) );
+
+        }
+    return kernel;
+}
+
 /**************************************************
  TIME TO WRITE CODE
 **************************************************/
@@ -293,16 +312,7 @@ void MainWindow::GaussianBlurImage(double** image, double sigma)
         return;
     int radius = (int)(ceil(3 * sigma));
     int size = 2 * radius + 1;
-    double *kernel = new double [size*size];
-
-    for(int x=0; x<size; x++)
-        for (int y=0; y<size; y++){
-            kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) *\
-                exp(-0.5 * (pow( (x-radius)/sigma, 2.0 ) + \
-                pow( (y-radius)/sigma, 2.0 ) ) );
-        }
-
-
+    double *kernel = generateGaussianKernel(sigma, true);
     NormalizeKernel(kernel, size, size);
     MainWindow::Convolution(image, kernel, size, size, false);
     delete[] kernel;
@@ -323,11 +333,7 @@ void MainWindow::SeparableGaussianBlurImage(double** image, double sigma)
         return;
     int radius = (int)(ceil(3*sigma));
     int size = 2*radius+1;
-    double *kernel = new double [size];
-    for (int x=0; x<size; x++) {
-        kernel[x] = ( 1 / sqrt( 2*M_PI*pow(sigma, 2.0) ) ) *\
-            exp( -0.5 * pow( (x-radius)/sigma, 2.0 ) );
-    }
+    double *kernel = generateGaussianKernel(sigma, false);
     NormalizeKernel(kernel, 1, size);
     MainWindow::Convolution(image, kernel, 1, size, false);
     MainWindow::Convolution(image, kernel, size, 1, false);
@@ -346,25 +352,16 @@ void MainWindow::FirstDerivImage_x(double** image, double sigma)
     if (sigma == 0.0)
         return;
 
-    int derivative_radius = 3;
-    int derivative_size = 2*derivative_radius+1;
-    double *derivative_kernel = new double [derivative_size];
-    derivative_kernel[0] = -1.0;
-    derivative_kernel[1] = 0.0;
-    derivative_kernel[2] = 1.0;
+    int derivative_size = 3;
+    double derivative_kernel[] = {-1.0,0.0,1.0};
     NormalizeKernel(derivative_kernel, 1, derivative_size);
-    MainWindow::Convolution(image, derivative_kernel, derivative_size, 1, false);
+    MainWindow::Convolution(image, derivative_kernel, derivative_size, 1, true);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = new double [gaussian_size*gaussian_size];
-    for(int x=0; x<gaussian_size; x++)
-        for (int y=0; y<gaussian_size; y++)
-            gaussian_kernel[x*gaussian_size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-gaussian_radius)/sigma, 2.0 )+ pow( (y-gaussian_radius)/sigma, 2.0 ) ) );
-
+    double *gaussian_kernel = generateGaussianKernel(sigma, true);
     NormalizeKernel(gaussian_kernel, 1, gaussian_size);
     MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
-    delete[] derivative_kernel;
     delete[] gaussian_kernel;
 }
 
@@ -380,25 +377,16 @@ void MainWindow::FirstDerivImage_y(double** image, double sigma)
     if (sigma == 0.0)
         return;
 
-    int derivative_radius = 3;
-    int derivative_size = 2*derivative_radius+1;
-    double *derivative_kernel = new double [derivative_size];
-    derivative_kernel[0] = -1.0;
-    derivative_kernel[1] = 0.0;
-    derivative_kernel[2] = 1.0;
+    int derivative_size = 3;
+    double derivative_kernel[] = {-1.0,0.0,1.0};
     NormalizeKernel(derivative_kernel, 1, derivative_size);
-    MainWindow::Convolution(image, derivative_kernel, 1, derivative_size, false);
+    MainWindow::Convolution(image, derivative_kernel, 1, derivative_size, true);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = new double [gaussian_size*gaussian_size];
-    for(int x=0; x<gaussian_size; x++)
-        for (int y=0; y<gaussian_size; y++)
-            gaussian_kernel[x*gaussian_size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-gaussian_radius)/sigma, 2.0 )+ pow( (y-gaussian_radius)/sigma, 2.0 ) ) );
-
+    double *gaussian_kernel = generateGaussianKernel(sigma, true);
     NormalizeKernel(gaussian_kernel, 1, gaussian_size);
     MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
-    delete[] derivative_kernel;
     delete[] gaussian_kernel;
 }
 /********** TASK 4 (c) **********/
@@ -412,21 +400,18 @@ void MainWindow::SecondDerivImage(double** image, double sigma)
 {
     if (sigma == 0.0)
         return;
-    int laplacian_radius = 3;
-    int laplacian_size = 2*laplacian_radius+1;
+    // int laplacian_radius = 3;
+    int laplacian_size = 3;
     double *laplacian_kernel = new double [laplacian_size*laplacian_size];
     laplacian_kernel[0] = laplacian_kernel[2] = laplacian_kernel[6] = laplacian_kernel[8] = 0.0;
     laplacian_kernel[1] = laplacian_kernel[3] = laplacian_kernel[5] = laplacian_kernel[7] = 1.0;
     laplacian_kernel[4] = -4.0;
     NormalizeKernel(laplacian_kernel, laplacian_size, laplacian_size);
-    MainWindow::Convolution(image, laplacian_kernel, laplacian_size, laplacian_size, false);
+    MainWindow::Convolution(image, laplacian_kernel, laplacian_size, laplacian_size, true);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = new double [gaussian_size*gaussian_size];
-    for(int x=0; x<gaussian_size; x++)
-        for (int y=0; y<gaussian_size; y++)
-            gaussian_kernel[x*gaussian_size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-gaussian_radius)/sigma, 2.0 )+ pow( (y-gaussian_radius)/sigma, 2.0 ) ) );
+    double *gaussian_kernel = generateGaussianKernel(sigma,true);
 
     NormalizeKernel(gaussian_kernel, 1, gaussian_size);
     MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
