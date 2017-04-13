@@ -2,6 +2,12 @@
 #include "math.h"
 #include "ui_mainwindow.h"
 #include <QtGui>
+#include <vector>
+
+typedef std::vector<double> v1dDouble;
+typedef std::vector<v1dDouble> v2dDouble;
+typedef std::vector<v2dDouble> v3dDouble;
+
 
 /***********************************************************************
   This is the only file you need to change for your assignment. The
@@ -89,7 +95,7 @@ int restrictColorForDouble(double color, bool add)
 {
     int color_int = (int)(floor(color+0.5));
     if (add == true)
-        color_int += 128.0;
+        color_int += 128;
     return max(0,min(255,color_int));
 }
 
@@ -232,26 +238,18 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
     int bufferHeight = imageHeight+kernelHeight-1;
     int imageWidthStart = (kernelWidth-1)/2;
     int imageHeightStart = (kernelHeight-1)/2;
-    int imageWidthEnd = imageWidthStart+imageWidth;
-    int imageHeightEnd = imageHeightStart+imageHeight;
+
+    // create a three dimensional vector with dimension bufferHeight*bufferWidth*3
+    v3dDouble buffer(bufferHeight, \
+        v2dDouble( bufferWidth, v1dDouble(3, 0.0)));
 
     // copy the image from the input doble** to buffer.
-    double** buffer = new double* [bufferWidth*bufferHeight];
-    for (int i=0; i<bufferWidth*bufferHeight; i++)
-    {
-        buffer[i] = new double[3];
-        int image_x = i%imageWidth;
-        int image_y = i/imageWidth;
-
-        for (int j=0; j<3; j++)
-        {
-            if ((image_x < imageWidthStart || image_x >= imageWidthEnd) || (image_y < imageHeightStart || image_y >= imageHeightEnd)) {
-                buffer[i][j] = 0.0;
-            } else {
-                buffer[i][j] = image[(image_y-imageHeightStart)*imageWidth+(image_x-imageWidthStart)][j];
+    for (int y=0; y!=imageHeight; y++)
+        for (int x=0; x!=imageWidth; x++)
+            for (int j=0; j!=3; j++) {
+                buffer[y+imageHeightStart][x+imageWidthStart][j] = \
+                    image[y*imageWidth+x][j];
             }
-        }
-    }
 
     for(int r=0;r<imageHeight;r++)
     {
@@ -266,12 +264,11 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
             for(int rd=-heightRadius;rd<=heightRadius;rd++)
                 for(int cd=-widthRadius;cd<=widthRadius;cd++)
                 {
-                     int pixel = (r + rd + heightRadius) * imageWidth + (c + cd + widthRadius);
                      double weight = kernel[(rd+heightRadius)*kernelWidth + (cd+widthRadius)];
 
-                     rgb[0] += weight*buffer[pixel][0];
-                     rgb[1] += weight*buffer[pixel][1];
-                     rgb[2] += weight*buffer[pixel][2];
+                     rgb[0] += weight*buffer[r+rd+heightRadius][c+cd+widthRadius][0];
+                     rgb[1] += weight*buffer[r+rd+heightRadius][c+cd+widthRadius][1];
+                     rgb[2] += weight*buffer[r+rd+heightRadius][c+cd+widthRadius][2];
                 }
 
             image[r*imageWidth+c][0] = restrictColorForDouble(rgb[0], add);
@@ -279,10 +276,6 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
             image[r*imageWidth+c][2] = restrictColorForDouble(rgb[2], add);
         }
     }
-
-    for (int i=0; i<3; i++)
-        delete[] buffer[i];
-    delete[] buffer;
 }
 
 /**************************************************
@@ -304,7 +297,9 @@ void MainWindow::GaussianBlurImage(double** image, double sigma)
 
     for(int x=0; x<size; x++)
         for (int y=0; y<size; y++){
-            kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * (pow( (x-radius)/sigma, 2.0 )+ pow( (y-radius)/sigma, 2.0 ) ) );
+            kernel[x*size+y] = ( 1 / ( 2*M_PI*pow(sigma, 2.0) ) ) *\
+                exp(-0.5 * (pow( (x-radius)/sigma, 2.0 ) + \
+                pow( (y-radius)/sigma, 2.0 ) ) );
         }
 
 
@@ -330,7 +325,8 @@ void MainWindow::SeparableGaussianBlurImage(double** image, double sigma)
     int size = 2*radius+1;
     double *kernel = new double [size];
     for (int x=0; x<size; x++) {
-        kernel[x] = ( 1 / sqrt( 2*M_PI*pow(sigma, 2.0) ) ) * exp( -0.5 * pow( (x-radius)/sigma, 2.0 ) );
+        kernel[x] = ( 1 / sqrt( 2*M_PI*pow(sigma, 2.0) ) ) *\
+            exp( -0.5 * pow( (x-radius)/sigma, 2.0 ) );
     }
     NormalizeKernel(kernel, 1, size);
     MainWindow::Convolution(image, kernel, 1, size, false);
@@ -538,8 +534,16 @@ void MainWindow::BilinearInterpolation(double** image, double x, double y, doubl
 {
     double x_2 = ceil(x);
     double y_2 = ceil(y);
-    double x_1 = x_2-1;
-    double y_1 = y_2-1;
+    double x_1 = x_2-1.0;
+    double y_1 = y_2-1.0;
+    if (((int) x_2) >= imageWidth)
+        x_2 -= 1;
+    if (((int) y_2) >= imageHeight)
+        y_2 -= 1;
+    if (((int) x_1) <= 0)
+        x_1 += 1;
+    if (((int) y_1) <= 0)
+        y_1 += 1;
     for (int i=0; i!=3; i++) {
         double f_11 = image[(int) (y_1*imageWidth+x_1)][i];
         double f_12 = image[(int) (y_2*imageWidth+x_1)][i];
@@ -611,9 +615,12 @@ void MainWindow::FindPeaksImage(double** image, double thres)
 {
     double** buffer = new double* [imageWidth*imageHeight];
     MainWindow::SobelImage(image);
-    for (int i=0; i!=imageWidth*imageHeight; i++)
-        for (int j=0; j!=3; j++)
+    for (int i=0; i!=imageWidth*imageHeight; i++) {
+        buffer[i] = new double [3];
+        for (int j=0; j!=3; j++){
             buffer[i][j] = image[i][j];
+        }
+    }
     for (int x=0; x!=imageWidth; x++) {
         for (int y=0; y!=imageHeight; y++) {
             double* rgb_1 = new double[3];
@@ -621,7 +628,7 @@ void MainWindow::FindPeaksImage(double** image, double thres)
             double e1x = ((double) x) + buffer[y*imageWidth+x][1];
             double e1y = ((double) x) + buffer[y*imageWidth+x][0];
             double e2x = ((double) x) - buffer[y*imageWidth+x][1];
-            double e2y = ((double) x) - buffer[y*imageWidth+x][1];
+            double e2y = ((double) x) - buffer[y*imageWidth+x][0];
             MainWindow::BilinearInterpolation(buffer, e1x, e1y, rgb_1);
             MainWindow::BilinearInterpolation(buffer, e2x, e2y, rgb_2);
             if (buffer[y*imageWidth+x][2] >= thres && \
