@@ -96,7 +96,7 @@ int restrictColorForDouble(double color, bool add)
     int color_int = (int)(floor(color+0.5));
     if (add == true)
         color_int += 128;
-    return max(0,min(255,color_int));
+    return color_int;
 }
 
 // Normalize the values of the kernel to sum-to-one
@@ -355,13 +355,13 @@ void MainWindow::FirstDerivImage_x(double** image, double sigma)
     int derivative_size = 3;
     double derivative_kernel[] = {-1.0,0.0,1.0};
     NormalizeKernel(derivative_kernel, 1, derivative_size);
-    MainWindow::Convolution(image, derivative_kernel, derivative_size, 1, true);
+    MainWindow::Convolution(image, derivative_kernel, derivative_size, 1, false);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = generateGaussianKernel(sigma, true);
+    double *gaussian_kernel = generateGaussianKernel(sigma, false);
     NormalizeKernel(gaussian_kernel, 1, gaussian_size);
-    MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
+    MainWindow::Convolution(image, gaussian_kernel, gaussian_size, 1, true);
     delete[] gaussian_kernel;
 }
 
@@ -380,13 +380,13 @@ void MainWindow::FirstDerivImage_y(double** image, double sigma)
     int derivative_size = 3;
     double derivative_kernel[] = {-1.0,0.0,1.0};
     NormalizeKernel(derivative_kernel, 1, derivative_size);
-    MainWindow::Convolution(image, derivative_kernel, 1, derivative_size, true);
+    MainWindow::Convolution(image, derivative_kernel, 1, derivative_size, false);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = generateGaussianKernel(sigma, true);
+    double *gaussian_kernel = generateGaussianKernel(sigma, false);
     NormalizeKernel(gaussian_kernel, 1, gaussian_size);
-    MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
+    MainWindow::Convolution(image, gaussian_kernel, 1, gaussian_size, true);
     delete[] gaussian_kernel;
 }
 /********** TASK 4 (c) **********/
@@ -407,13 +407,13 @@ void MainWindow::SecondDerivImage(double** image, double sigma)
     laplacian_kernel[1] = laplacian_kernel[3] = laplacian_kernel[5] = laplacian_kernel[7] = 1.0;
     laplacian_kernel[4] = -4.0;
     NormalizeKernel(laplacian_kernel, laplacian_size, laplacian_size);
-    MainWindow::Convolution(image, laplacian_kernel, laplacian_size, laplacian_size, true);
+    MainWindow::Convolution(image, laplacian_kernel, laplacian_size, laplacian_size, false);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
     double *gaussian_kernel = generateGaussianKernel(sigma,true);
 
-    NormalizeKernel(gaussian_kernel, 1, gaussian_size);
+    NormalizeKernel(gaussian_kernel, gaussian_size, gaussian_size);
     MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
     delete[] laplacian_kernel;
     delete[] gaussian_kernel;
