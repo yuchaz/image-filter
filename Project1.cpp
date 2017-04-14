@@ -518,16 +518,29 @@ void MainWindow::BilinearInterpolation(double** image, double x, double y, doubl
 {
     double x_2 = ceil(x);
     double y_2 = ceil(y);
-    double x_1 = x_2-1.0;
-    double y_1 = y_2-1.0;
-    if (((int) x_2) >= imageWidth)
-        x_2 -= 1;
-    if (((int) y_2) >= imageHeight)
-        y_2 -= 1;
-    if (((int) x_1) <= 0)
-        x_1 += 1;
-    if (((int) y_1) <= 0)
-        y_1 += 1;
+    double x_1 = x_2 - 1.0;
+    double y_1 = y_2 - 1.0;
+    if (((int) x_2) >= imageWidth) {
+        x_2 = imageWidth-1;
+    } else if ((int) x_2 < 0) {
+        x_2 = 0;
+    }
+    if (((int) y_2) >= imageHeight) {
+        y_2 = imageHeight-1;
+    } else if ((int) y_2 < 0) {
+        y_2 = 0;
+    }
+    if (((int) x_1) >= imageWidth) {
+        x_1 = imageWidth-1;
+    } else if ((int) x_1 < 0) {
+        x_1 = 0;
+    }
+    if (((int) y_1) >= imageHeight) {
+        y_1 = imageHeight-1;
+    } else if ((int) y_1 < 0) {
+        y_1 = 0;
+    }
+
     for (int i=0; i!=3; i++) {
         double f_11 = image[(int) (y_1*imageWidth+x_1)][i];
         double f_12 = image[(int) (y_2*imageWidth+x_1)][i];
@@ -626,6 +639,8 @@ void MainWindow::FindPeaksImage(double** image, double thres)
                 image[y*imageWidth+x][1] = 0.0;
                 image[y*imageWidth+x][2] = 0.0;
             }
+            delete[] rgb_1;
+            delete[] rgb_2;
         }
     }
 
