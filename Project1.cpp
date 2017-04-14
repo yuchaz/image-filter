@@ -474,13 +474,14 @@ void MainWindow::SobelImage(double** image)
     double sobelKernelY[9] = {1,2,1,0,0,0,-1,-2,-1};
     double** Gx = new double* [imageWidth*imageHeight];
     double** Gy = new double* [imageWidth*imageHeight];
-    for (int i=0; i!=imageWidth*imageHeight; i++)
+    for (int i=0; i!=imageWidth*imageHeight; i++) {
+        Gx[i] = new double[3];
+        Gy[i] = new double[3];
         for (int j=0; j!=3; j++) {
-            Gx[i] = new double[3];
-            Gy[i] = new double[3];
             Gx[i][j] = image[i][j];
             Gy[i][j] = image[i][j];
         }
+    }
     MainWindow::Convolution(Gx,sobelKernelX,3,3,false);
     MainWindow::Convolution(Gy,sobelKernelY,3,3,false);
     for (int c=0; c!=imageWidth; c++)
@@ -488,7 +489,7 @@ void MainWindow::SobelImage(double** image)
             double y_val = Gy[r*imageWidth+c][0];
             double x_val = Gx[r*imageWidth+c][0];
             double orien = atan2(y_val,x_val);
-            double mag = sqrt(pow(x_val,2)+pow(y_val,2));
+            double mag = sqrt(pow(x_val,2)+pow(y_val,2))/8.0;
             image[r*imageWidth+c][0] = mag*4.0*((sin(orien) + 1.0)/2.0);
             image[r*imageWidth+c][1] = mag*4.0*((cos(orien) + 1.0)/2.0);
             image[r*imageWidth+c][2] = mag*4.0 - image[r*imageWidth+c][0] - image[r*imageWidth+c][1];
