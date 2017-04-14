@@ -354,14 +354,15 @@ void MainWindow::FirstDerivImage_x(double** image, double sigma)
 
     int derivative_size = 3;
     double derivative_kernel[] = {-1.0,0.0,1.0};
-    NormalizeKernel(derivative_kernel, 1, derivative_size);
-    MainWindow::Convolution(image, derivative_kernel, derivative_size, 1, false);
+    MainWindow::Convolution(image, derivative_kernel, derivative_size, 1, true);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = generateGaussianKernel(sigma, false);
-    NormalizeKernel(gaussian_kernel, 1, gaussian_size);
-    MainWindow::Convolution(image, gaussian_kernel, gaussian_size, 1, true);
+    double *gaussian_kernel = generateGaussianKernel(sigma, true);
+    NormalizeKernel(gaussian_kernel, gaussian_size, gaussian_size);
+    MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, false);
+
+
     delete[] gaussian_kernel;
 }
 
@@ -379,14 +380,13 @@ void MainWindow::FirstDerivImage_y(double** image, double sigma)
 
     int derivative_size = 3;
     double derivative_kernel[] = {-1.0,0.0,1.0};
-    NormalizeKernel(derivative_kernel, 1, derivative_size);
     MainWindow::Convolution(image, derivative_kernel, 1, derivative_size, false);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
     int gaussian_size = 2 * gaussian_radius + 1;
-    double *gaussian_kernel = generateGaussianKernel(sigma, false);
-    NormalizeKernel(gaussian_kernel, 1, gaussian_size);
-    MainWindow::Convolution(image, gaussian_kernel, 1, gaussian_size, true);
+    double *gaussian_kernel = generateGaussianKernel(sigma, true);
+    NormalizeKernel(gaussian_kernel, gaussian_size, gaussian_size);
+    MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
     delete[] gaussian_kernel;
 }
 /********** TASK 4 (c) **********/
@@ -400,13 +400,11 @@ void MainWindow::SecondDerivImage(double** image, double sigma)
 {
     if (sigma == 0.0)
         return;
-    // int laplacian_radius = 3;
     int laplacian_size = 3;
     double *laplacian_kernel = new double [laplacian_size*laplacian_size];
     laplacian_kernel[0] = laplacian_kernel[2] = laplacian_kernel[6] = laplacian_kernel[8] = 0.0;
     laplacian_kernel[1] = laplacian_kernel[3] = laplacian_kernel[5] = laplacian_kernel[7] = 1.0;
     laplacian_kernel[4] = -4.0;
-    NormalizeKernel(laplacian_kernel, laplacian_size, laplacian_size);
     MainWindow::Convolution(image, laplacian_kernel, laplacian_size, laplacian_size, false);
 
     int gaussian_radius = (int)(ceil(3 * sigma));
@@ -443,11 +441,11 @@ void MainWindow::SharpenImage(double** image, double sigma, double alpha)
     MainWindow::SecondDerivImage(image, sigma);
     for (int i=0;i<imageWidth*imageHeight;i++)
         for (int j=0;j!=3;j++)
-            gaussianImage[i][j] = image[i][j];
+            gaussianImage[i][j] = image[i][j]-128.0;
     for (int i=0;i<imageWidth*imageHeight;i++)
         for (int j=0;j<3;j++) {
             double piexel_val = originalImage[i][j] - alpha*gaussianImage[i][j];
-            image[i][j] = restrictColorForDouble(piexel_val, true);
+            image[i][j] = restrictColorForDouble(piexel_val, false);
         }
     for (int i=0;i<imageWidth*imageHeight;i++) {
         delete[] originalImage[i];
