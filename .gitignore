@@ -7,3 +7,8 @@ ImgFilter.pro.user.*
 Makefile
 .qmake.stash
 output/**
+
+Debug/**/*
+ImgFilter.xcodeproj/**/*
+Info.plist
+ImgFilter.entitlements

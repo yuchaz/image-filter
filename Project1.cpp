@@ -683,7 +683,7 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
                     double min_dist_to_center = -1.0;
                     for (int cluster=0; cluster!=num_clusters; cluster++) {
                         double dist_to_center = calc_dist(image[y][x], rgb_center[cluster]);
-                        if (min_dist_to_center<=dist_to_center && min_dist_to_center>0) {
+                        if (min_dist_to_center>=dist_to_center || min_dist_to_center==-1) {
                             min_dist_to_center = dist_to_center;
                             pixel_by_class[y][x] = cluster;
                         }
@@ -704,9 +704,9 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
         for (int i=0; i!=num_clusters; i++) {
             for (int j=0; j!=3; j++) {
                 average_center_of_class[i][j] /= count_of_class[i];
-                distance = calc_dist(average_center_of_class[i], rgb_center[i]);
-                rgb_center[i] = average_center_of_class[i];
+                rgb_center[i][j] = average_center_of_class[i][j];
             }
+            distance = calc_dist(average_center_of_class[i], rgb_center[i]);
         }
         kmeanClustering(image, rgb_center, pixel_by_class, distance, --iteration);
     }
