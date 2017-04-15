@@ -7,6 +7,8 @@
 typedef std::vector<double> v1dDouble;
 typedef std::vector<v1dDouble> v2dDouble;
 typedef std::vector<v2dDouble> v3dDouble;
+typedef std::vector<int> v1int;
+typedef std::vector<v1int> v2int;
 
 
 /***********************************************************************
@@ -649,6 +651,66 @@ void MainWindow::FindPeaksImage(double** image, double thres)
     delete[] buffer;
 }
 
+double calc_dist(const v1dDouble& rgb1, const v1dDouble& rgb2)
+{
+    double dist = 0.0;
+    for (int i=0; i!=3; i++) {
+        dist += fabs(rgb1[i]-rgb2[i]);
+    }
+    return dist;
+}
+
+void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel_by_class, double distance=-1.0, int iteration=100)
+/*
+ * image: input image in matrix form of size (imageWidth*imageHeight)*3 having double values
+ * rgb_center: 2D double vector of size (num_clusters, 3), indicate the center of cluster in RGB space.
+ * pixel_by_class: int array indicate the class of each pixel, with size (imageWidth*imageHeight)
+ * distance: distance of current center v.s. previous center.
+ * iteration: max iteration of kmeanClustering, count down from 100.
+*/
+{
+    int imageHeight = image.size();
+    int imageWidth = image[0].size();
+    int num_clusters = rgb_center.size();
+    double epilson = 30;
+    if ((distance<=epilson*num_clusters && distance>0) || iteration<=0) {
+        return;
+    } else {
+        for (int y=0; y!=imageHeight; y++)
+            for (int x=0; x!=imageWidth; x++)
+                for (int j=0; j!=3; j++) {
+                    double min_dist_to_center = -1.0;
+                    for (int cluster=0; cluster!=num_clusters; cluster++) {
+                        double dist_to_center = calc_dist(image[y][x], rgb_center[cluster]);
+                        if (min_dist_to_center<=dist_to_center && min_dist_to_center>0) {
+                            min_dist_to_center = dist_to_center;
+                            pixel_by_class[y][x] = cluster;
+                        }
+                    }
+                }
+        v2dDouble average_center_of_class(num_clusters, v1dDouble(3, 0.0));
+        v1dDouble count_of_class(num_clusters, 0.0);
+        for (int y=0; y!=imageWidth; y++)
+            for (int x=0; x!=imageWidth; x++) {
+                for (int j=0; j!=3; j++){
+                    average_center_of_class[ pixel_by_class[y][x] ][j] += \
+                        image[y][x][j];
+                }
+                count_of_class[ pixel_by_class[y][x] ] += 1.0;
+            }
+        if (distance==-1.0)
+            distance=0.0;
+        for (int i=0; i!=num_clusters; i++) {
+            for (int j=0; j!=3; j++) {
+                average_center_of_class[i][j] /= count_of_class[i];
+                distance = calc_dist(average_center_of_class[i], rgb_center[i]);
+                rgb_center[i] = average_center_of_class[i];
+            }
+        }
+        kmeanClustering(image, rgb_center, pixel_by_class, distance, iteration--);
+    }
+}
+
 /**************************************************
  TASK 9 (a)
 **************************************************/
@@ -660,7 +722,28 @@ void MainWindow::RandomSeedImage(double** image, int num_clusters)
  * num_clusters: number of clusters into which the image is to be clustered
 */
 {
-    // Add your code here
+    v3dDouble buffer(imageHeight, \
+        v2dDouble( imageWidth, v1dDouble(3, 0.0)));
+
+    // copy the image from the input doble** to buffer.
+    for (int y=0; y!=imageHeight; y++)
+        for (int x=0; x!=imageWidth; x++)
+            for (int j=0; j!=3; j++)
+                buffer[y][x][j] = image[y*imageWidth+x][j];
+
+    // create the rgb center by random seeds.
+    v2dDouble rgb_center(num_clusters, v1dDouble(3,0.0));
+    for (int i=0; i!= num_clusters; i++)
+        for (int j=0; j!=3; j++)
+            rgb_center[i][j] = rand()%256;
+
+    // create pixel by class
+    v2int pixel_by_class(imageHeight, v1int(imageWidth, 0));
+    kmeanClustering(buffer, rgb_center, pixel_by_class);
+    for (int y=0; y!=imageWidth; y++)
+        for (int x=0; x!=imageHeight; x++)
+            for (int j=0; j!=3; j++)
+                image[y*imageWidth+x][j] = rgb_center[ pixel_by_class[y][x] ][j];
 }
 
 /**************************************************
@@ -674,7 +757,55 @@ void MainWindow::PixelSeedImage(double** image, int num_clusters)
  * num_clusters: number of clusters into which the image is to be clustered
 */
 {
-    // Add your code here
+    v3dDouble buffer(imageHeight, \
+        v2dDouble( imageWidth, v1dDouble(3, 0.0)));
+
+    // copy the image from the input doble** to buffer.
+    for (int y=0; y!=imageHeight; y++)
+        for (int x=0; x!=imageWidth; x++)
+            for (int j=0; j!=3; j++)
+                buffer[y][x][j] = image[y*imageWidth+x][j];
+
+    // create the rgb center by image pixel.
+    v2dDouble rgb_center(num_clusters, v1dDouble(3,0.0));
+    for (int j=0; j!=3; j++)
+        rgb_center[0][j] = rand()%256;
+    for (int i=1; i!= num_clusters; i++) {
+        v1dDouble distance_of_seed(num_clusters, 0.0);
+        int selected_y = 0;
+        int selected_x = 0;
+        while (true) {
+            int y = rand() % imageHeight;
+            int x = rand() % imageWidth;
+            for (int clu=0; clu!=i; clu++){
+                double dist_to_center = calc_dist(buffer[y][x], rgb_center[clu]);
+                distance_of_seed[clu] = dist_to_center;
+            }
+            bool if_all_above = false;
+            for (int clu=0; clu!=i; clu++){
+                if (distance_of_seed[clu] < 100.0) {
+                    if_all_above = false;
+                    break;
+                } else {
+                    if_all_above = true;
+                }
+            }
+            if (if_all_above==true){
+                selected_y = y;
+                selected_x = x;
+                break;
+            }
+        }
+        rgb_center[i] = buffer[selected_y][selected_x];
+    }
+
+    // create pixel by class
+    v2int pixel_by_class(imageHeight, v1int(imageWidth, 0));
+    kmeanClustering(buffer, rgb_center, pixel_by_class);
+    for (int y=0; y!=imageWidth; y++)
+        for (int x=0; x!=imageHeight; x++)
+            for (int j=0; j!=3; j++)
+                image[y*imageWidth+x][j] = rgb_center[ pixel_by_class[y][x] ][j];
 }
 
 
