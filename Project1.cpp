@@ -3,6 +3,7 @@
 #include "ui_mainwindow.h"
 #include <QtGui>
 #include <vector>
+#include <iostream>
 
 typedef std::vector<double> v1dDouble;
 typedef std::vector<v1dDouble> v2dDouble;
@@ -690,7 +691,7 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
                 }
         v2dDouble average_center_of_class(num_clusters, v1dDouble(3, 0.0));
         v1dDouble count_of_class(num_clusters, 0.0);
-        for (int y=0; y!=imageWidth; y++)
+        for (int y=0; y!=imageHeight; y++)
             for (int x=0; x!=imageWidth; x++) {
                 for (int j=0; j!=3; j++){
                     average_center_of_class[ pixel_by_class[y][x] ][j] += \
@@ -707,7 +708,7 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
                 rgb_center[i] = average_center_of_class[i];
             }
         }
-        kmeanClustering(image, rgb_center, pixel_by_class, distance, iteration--);
+        kmeanClustering(image, rgb_center, pixel_by_class, distance, --iteration);
     }
 }
 
@@ -740,8 +741,8 @@ void MainWindow::RandomSeedImage(double** image, int num_clusters)
     // create pixel by class
     v2int pixel_by_class(imageHeight, v1int(imageWidth, 0));
     kmeanClustering(buffer, rgb_center, pixel_by_class);
-    for (int y=0; y!=imageWidth; y++)
-        for (int x=0; x!=imageHeight; x++)
+    for (int y=0; y!=imageHeight; y++)
+        for (int x=0; x!=imageWidth; x++)
             for (int j=0; j!=3; j++)
                 image[y*imageWidth+x][j] = rgb_center[ pixel_by_class[y][x] ][j];
 }
@@ -802,8 +803,8 @@ void MainWindow::PixelSeedImage(double** image, int num_clusters)
     // create pixel by class
     v2int pixel_by_class(imageHeight, v1int(imageWidth, 0));
     kmeanClustering(buffer, rgb_center, pixel_by_class);
-    for (int y=0; y!=imageWidth; y++)
-        for (int x=0; x!=imageHeight; x++)
+    for (int y=0; y!=imageHeight; y++)
+        for (int x=0; x!=imageWidth; x++)
             for (int j=0; j!=3; j++)
                 image[y*imageWidth+x][j] = rgb_center[ pixel_by_class[y][x] ][j];
 }
