@@ -94,7 +94,8 @@ QRgb restrictColor(double red, double green, double blue)
     return qRgb(max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)));
 }
 
-int restrictColorForDouble(double color, bool add)
+// Add pixel intensity by 128 if add == true.
+int manipulatePixelIntensity(double color, bool add)
 {
     int color_int = (int)(floor(color+0.5));
     if (add == true)
@@ -207,6 +208,7 @@ void MainWindow::ConvertDouble2QImage(QImage *image)
             image->setPixel(c, r, restrictColor(Image[r*imageWidth+c][0], Image[r*imageWidth+c][1], Image[r*imageWidth+c][2]));
 }
 
+// Unity kernel when testing if convolution works properly. Image should not change when applying this kernel.
 void UnityKernel(double* kernel, int size)
 {
     for(int x=0; x<size; x++)
@@ -219,7 +221,17 @@ void UnityKernel(double* kernel, int size)
         }
 }
 
-double* generateGaussianKernel(double sigma, bool if2d) {
+// Generating Gaussian kernel
+double* generateGaussianKernel(double sigma, bool if2d)
+/*
+ * sigma: sigma of the gaussian kernal
+ * if2d: if generating 2d gaussian kernel
+ * Return: two dimensional array, which is the gaussian kernel.
+ *         If it's 2D gaussian kernel, size is: x_size*x_size;
+ *         If it's 1D, size is x_size*1
+ *         Where x_size = 2 * radius + 1; radius = 3*sigmal;
+*/
+{
     int radius = (int)(ceil(3 * sigma));
     int x_size = 2 * radius + 1;
     int y_size = if2d==true ? x_size : 1;
@@ -262,6 +274,8 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
     int imageHeightStart = (kernelHeight-1)/2;
 
     // create a three dimensional vector with dimension bufferHeight*bufferWidth*3
+    // v3dDouble is 3 dimensional double vector, v2dDouble is 2D, v1dDouble is 1D.
+    // See the typedef above.
     v3dDouble buffer(bufferHeight, \
         v2dDouble( bufferWidth, v1dDouble(3, 0.0)));
 
@@ -273,10 +287,9 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
                     image[y*imageWidth+x][j];
             }
 
-    for(int r=0;r<imageHeight;r++)
-    {
-        for(int c=0;c<imageWidth;c++)
-        {
+    // Convilution started. Iterate thru each pixel in image.
+    for(int r=0;r<imageHeight;r++) {
+        for(int c=0;c<imageWidth;c++) {
             double rgb[3];
             rgb[0] = rgb[1] = rgb[2] = 0.0;
 
@@ -284,8 +297,7 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
             int heightRadius = (kernelHeight-1)/2;
             int widthRadius = (kernelWidth-1)/2;
             for(int rd=-heightRadius;rd<=heightRadius;rd++)
-                for(int cd=-widthRadius;cd<=widthRadius;cd++)
-                {
+                for(int cd=-widthRadius;cd<=widthRadius;cd++) {
                      double weight = kernel[(rd+heightRadius)*kernelWidth + (cd+widthRadius)];
 
                      rgb[0] += weight*buffer[r+rd+heightRadius][c+cd+widthRadius][0];
@@ -293,9 +305,9 @@ void MainWindow::Convolution(double** image, double *kernel, int kernelWidth, in
                      rgb[2] += weight*buffer[r+rd+heightRadius][c+cd+widthRadius][2];
                 }
 
-            image[r*imageWidth+c][0] = restrictColorForDouble(rgb[0], add);
-            image[r*imageWidth+c][1] = restrictColorForDouble(rgb[1], add);
-            image[r*imageWidth+c][2] = restrictColorForDouble(rgb[2], add);
+            image[r*imageWidth+c][0] = manipulatePixelIntensity(rgb[0], add);
+            image[r*imageWidth+c][1] = manipulatePixelIntensity(rgb[1], add);
+            image[r*imageWidth+c][2] = manipulatePixelIntensity(rgb[2], add);
         }
     }
 }
@@ -415,6 +427,7 @@ void MainWindow::SecondDerivImage(double** image, double sigma)
     double *gaussian_kernel = generateGaussianKernel(sigma,true);
 
     NormalizeKernel(gaussian_kernel, gaussian_size, gaussian_size);
+    // Add 128 to final value so that we can see minus intensity.
     MainWindow::Convolution(image, gaussian_kernel, gaussian_size, gaussian_size, true);
     delete[] laplacian_kernel;
     delete[] gaussian_kernel;
@@ -442,13 +455,14 @@ void MainWindow::SharpenImage(double** image, double sigma, double alpha)
         }
     }
     MainWindow::SecondDerivImage(image, sigma);
+    // Delete 129.0 from the SecondDerivImage.
     for (int i=0;i<imageWidth*imageHeight;i++)
         for (int j=0;j!=3;j++)
             gaussianImage[i][j] = image[i][j]-128.0;
     for (int i=0;i<imageWidth*imageHeight;i++)
         for (int j=0;j<3;j++) {
             double piexel_val = originalImage[i][j] - alpha*gaussianImage[i][j];
-            image[i][j] = restrictColorForDouble(piexel_val, false);
+            image[i][j] = manipulatePixelIntensity(piexel_val, false);
         }
     for (int i=0;i<imageWidth*imageHeight;i++) {
         delete[] originalImage[i];
@@ -475,7 +489,9 @@ void MainWindow::SobelImage(double** image)
 
     double sobelKernelX[9] = {-1,0,1,-2,0,2,-1,0,1};
     double sobelKernelY[9] = {1,2,1,0,0,0,-1,-2,-1};
+    // Gx is the output when applying sobel kernel at direction x
     double** Gx = new double* [imageWidth*imageHeight];
+    // Gy is the output when applying sobel kernel at direction y
     double** Gy = new double* [imageWidth*imageHeight];
     for (int i=0; i!=imageWidth*imageHeight; i++) {
         Gx[i] = new double[3];
@@ -523,6 +539,7 @@ void MainWindow::BilinearInterpolation(double** image, double x, double y, doubl
     double y_2 = ceil(y);
     double x_1 = x_2 - 1.0;
     double y_1 = y_2 - 1.0;
+    // The if else statements below are used to manipulate out of range pixels.
     if (((int) x_2) >= imageWidth) {
         x_2 = imageWidth-1;
     } else if ((int) x_2 < 0) {
@@ -631,6 +648,8 @@ void MainWindow::FindPeaksImage(double** image, double thres)
             double e2y = ((double) x) - buffer[y*imageWidth+x][0];
             MainWindow::BilinearInterpolation(buffer, e1x, e1y, rgb_1);
             MainWindow::BilinearInterpolation(buffer, e2x, e2y, rgb_2);
+            // If detect the peak, set the intensity to on (255,255,255);
+            // Otherwise, set it to off (0,0,0);
             if (buffer[y*imageWidth+x][2] >= thres && \
                 buffer[y*imageWidth+x][2] > rgb_1[2] && \
                 buffer[y*imageWidth+x][2] > rgb_2[2]) {
@@ -652,7 +671,13 @@ void MainWindow::FindPeaksImage(double** image, double thres)
     delete[] buffer;
 }
 
+// calculate the distance between two point in RGB space.
 double calc_dist(const v1dDouble& rgb1, const v1dDouble& rgb2)
+/*
+ * rgb1: 1D vector representing point 1
+ * rgb2: 1D vector representing point 2
+ * Return: L1 distance between these two points.
+*/
 {
     double dist = 0.0;
     for (int i=0; i!=3; i++) {
@@ -661,6 +686,8 @@ double calc_dist(const v1dDouble& rgb1, const v1dDouble& rgb2)
     return dist;
 }
 
+// A recursive function in calculating kmeanClustering
+// Will stop when iterate 100 times or distance <= epilson*num_clusters;
 void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel_by_class, double distance=-1.0, int iteration=100)
 /*
  * image: input image in matrix form of size (imageWidth*imageHeight)*3 having double values
@@ -670,13 +697,16 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
  * iteration: max iteration of kmeanClustering, count down from 100.
 */
 {
+    // get imageHeight and imageWidth since kmeanClustering is not member of MainWindow;
     int imageHeight = image.size();
     int imageWidth = image[0].size();
     int num_clusters = rgb_center.size();
     double epilson = 30;
     if ((distance<=epilson*num_clusters && distance>0) || iteration<=0) {
+        // stopping condition.
         return;
     } else {
+        // assign pixel to class which center is the closest.
         for (int y=0; y!=imageHeight; y++)
             for (int x=0; x!=imageWidth; x++)
                 for (int j=0; j!=3; j++) {
@@ -689,6 +719,8 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
                         }
                     }
                 }
+
+        // Calculate the new clusting center.
         v2dDouble average_center_of_class(num_clusters, v1dDouble(3, 0.0));
         v1dDouble count_of_class(num_clusters, 0.0);
         for (int y=0; y!=imageHeight; y++)
@@ -708,6 +740,8 @@ void kmeanClustering(const v3dDouble& image, v2dDouble& rgb_center, v2int& pixel
             }
             distance = calc_dist(average_center_of_class[i], rgb_center[i]);
         }
+
+        // Do recursion
         kmeanClustering(image, rgb_center, pixel_by_class, distance, --iteration);
     }
 }
@@ -769,13 +803,18 @@ void MainWindow::PixelSeedImage(double** image, int num_clusters)
 
     // create the rgb center by image pixel.
     v2dDouble rgb_center(num_clusters, v1dDouble(3,0.0));
+    // randomly assign first clustering center;
     for (int j=0; j!=3; j++)
         rgb_center[0][j] = rand()%256;
     for (int i=1; i!= num_clusters; i++) {
         v1dDouble distance_of_seed(num_clusters, 0.0);
         int selected_y = 0;
         int selected_x = 0;
+        // if new clustering center is far enough from previous generated center
+        // then break; else continue until find one
         while (true) {
+            // randomly generating x, y. Because intensity are basically continuous,
+            // if use a for loop to iterate thru all pixels, it will waste too much computing time
             int y = rand() % imageHeight;
             int x = rand() % imageWidth;
             for (int clu=0; clu!=i; clu++){
@@ -809,6 +848,7 @@ void MainWindow::PixelSeedImage(double** image, int num_clusters)
                 image[y*imageWidth+x][j] = rgb_center[ pixel_by_class[y][x] ][j];
 }
 
+// Do not finish any of the extra tasks.
 
 /**************************************************
  EXTRA CREDIT TASKS
